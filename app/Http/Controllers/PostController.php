@@ -1,0 +1,75 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Post;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
+
+class PostController extends Controller
+{
+    public function index()
+    {
+        $posts = Post::with('user')->latest()->paginate(10);
+        return view('posts.index', compact('posts'));
+    }
+
+    public function create()
+    {
+        Gate::authorize('create', Post::class);
+        return view('posts.create');
+    }
+
+    public function store(Request $request)
+    {
+        Gate::authorize('create', Post::class);
+
+        $request->validate([
+            'title' => 'required|string|max:200',
+            'content' => 'required|string',
+        ]);
+
+        Post::create([
+            'user_id' => $request->user()->id,
+            'title' => $request->title,
+            'slug' => Str::slug($request->title) . '-' . time(),
+            'content' => $request->content,
+            'is_published' => true,
+        ]);
+
+        return redirect()->route('posts.index')->with('success', 'Postingan baru berhasil dibuat.');
+    }
+
+    public function edit(Post $post)
+    {
+        Gate::authorize('update', $post);
+        return view('posts.edit', compact('post'));
+    }
+
+    public function update(Request $request, Post $post)
+    {
+        Gate::authorize('update', $post);
+
+        $request->validate([
+            'title' => 'required|string|max:200',
+            'content' => 'required|string',
+        ]);
+
+        $post->update([
+            'title' => $request->title,
+            'content' => $request->content,
+        ]);
+
+        return redirect()->route('posts.index')->with('success', 'Postingan berhasil diperbarui.');
+    }
+
+    public function destroy(Post $post)
+    {
+        Gate::authorize('delete', $post);
+
+        $post->delete();
+
+        return redirect()->route('posts.index')->with('success', 'Postingan berhasil dihapus.');
+    }
+}
